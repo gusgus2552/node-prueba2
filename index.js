@@ -24,7 +24,7 @@ app.get('/', (req, res) => {
         name: 'WhatsApp API',
         version: '1.0.0',
         endpoints: {
-            'POST /api/whatsapp/init': 'Inicializar cliente de WhatsApp',
+            'POST /api/whatsapp/init': 'Inicializar2  cliente de WhatsApp',
             'GET /api/whatsapp/status': 'Obtener estado del cliente',
             'POST /api/whatsapp/send': 'Enviar mensaje',
             'POST /api/whatsapp/disconnect': 'Desconectar cliente'
@@ -54,7 +54,7 @@ app.listen(PORT, () => {
     console.log(`  POST http://localhost:${PORT}/api/whatsapp/send`);
     console.log(`  POST http://localhost:${PORT}/api/whatsapp/disconnect`);
     console.log('');
-    console.log('💡 Ejecuta POST /api/whatsapp/init para comenzar');
+    console.log('💡 Ejecuta POST /api/whatsapp/init para comenzar 2');
 });
 
 
