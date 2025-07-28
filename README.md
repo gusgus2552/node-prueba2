@@ -17,6 +17,8 @@ API REST para enviar mensajes de WhatsApp utilizando el patrón de diseño módu
 
 ## Instalación
 
+### Opción 1: Instalación Local
+
 1. Instalar dependencias:
 ```bash
 npm install
@@ -31,6 +33,71 @@ O para desarrollo con auto-reload:
 ```bash
 npm run dev
 ```
+
+### Opción 2: Usando Docker (Recomendado)
+
+#### Prerrequisitos
+- Docker
+- Docker Compose
+
+#### Comandos disponibles
+
+1. **Construir e iniciar la aplicación:**
+```bash
+./docker.sh start
+```
+
+2. **Ver logs en tiempo real:**
+```bash
+./docker.sh logs
+```
+
+3. **Detener la aplicación:**
+```bash
+./docker.sh stop
+```
+
+4. **Reiniciar la aplicación:**
+```bash
+./docker.sh restart
+```
+
+5. **Abrir shell en el contenedor:**
+```bash
+./docker.sh shell
+```
+
+6. **Limpiar imágenes y volúmenes no utilizados:**
+```bash
+./docker.sh clean
+```
+
+#### Comandos Docker manuales
+
+Si prefieres usar Docker directamente:
+
+```bash
+# Construir imagen
+docker build -t whatsapp-api:latest .
+
+# Ejecutar con docker-compose
+docker-compose up -d
+
+# Ver logs
+docker-compose logs -f
+
+# Detener
+docker-compose down
+```
+
+#### Características del contenedor Docker
+
+- **Imagen base**: Node.js v22 Alpine (ligera y segura)
+- **Puerto expuesto**: 3000
+- **Volúmenes persistentes**: Para mantener la sesión de WhatsApp entre reinicios
+- **Health check**: Monitoreo automático del estado de la aplicación
+- **Usuario no-root**: Mayor seguridad
+- **Chromium incluido**: Para whatsapp-web.js
 
 ## Uso de la API
 
@@ -162,3 +229,21 @@ Este proyecto utiliza el patrón de diseño módulo para organizar el código:
 - **ResponseHandler**: Estandariza las respuestas HTTP
 
 Cada módulo expone solo las funciones necesarias, manteniendo el código organizado y encapsulado.
+
+## Notas Importantes para Docker
+
+### Persistencia de Sesión
+- Los volúmenes Docker mantienen la sesión de WhatsApp entre reinicios del contenedor
+- No necesitas escanear el código QR cada vez que reinicies el contenedor
+
+### Puertos
+- La aplicación estará disponible en `http://localhost:3000`
+- Asegúrate de que el puerto 3000 esté libre en tu sistema
+
+### Logs y Debugging
+- Usa `./docker.sh logs` para ver los logs en tiempo real
+- El código QR aparecerá en los logs del contenedor cuando inicialices el cliente
+
+### Recursos del Sistema
+- El contenedor incluye Chromium para whatsapp-web.js
+- Requiere aproximadamente 200-300MB de RAM en funcionamiento

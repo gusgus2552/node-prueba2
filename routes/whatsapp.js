@@ -50,7 +50,7 @@ router.post('/send', async (req, res) => {
 router.get('/status', (req, res) => {
     try {
         const status = WhatsAppClient.getStatus();
-        return ResponseHandler.success(res, status, 'Estado del cliente obtenido correctamente');
+        return ResponseHandler.success(res, status, 'Estado en del clienteee obtenido correctamente');
     } catch (error) {
         console.error('Error al obtener estado:', error);
         return ResponseHandler.error(res, error.message);

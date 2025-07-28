@@ -1,89 +1,110 @@
+// whatsappClient.js
 const { Client } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 
-/**
- * Módulo para manejar el cliente de WhatsApp
- */
-const WhatsAppClient = (() => {
-    let client;
-    let isReady = false;
-    let qrGenerated = false;
+class WhatsAppService {
+    constructor() {
+        this.client = null;
+        this.isReady = false;
+        this.qrGenerated = false;
+    }
 
-    const init = () => {
-        if (client) {
-            return client;
-        }
-
-        client = new Client();
-
-        client.on('qr', qr => {
-            console.log('QR Code generado. Escanéalo con WhatsApp:');
-            qrcode.generate(qr, { small: true });
-            qrGenerated = true;
-        });
-
-        client.on('ready', () => {
-            console.log('Cliente de WhatsApp está listo!');
-            console.log('---------------');
-            isReady = true;
-        });
-
-        client.on('message', msg => {
-            if (msg.body == '!ping') {
-                msg.reply('pong');
-            }
-        });
-
-        client.on('disconnected', (reason) => {
-            console.log('Cliente desconectado:', reason);
-            isReady = false;
-        });
-
-        client.initialize();
-        return client;
-    };
-
-    const sendMessage = async (number, message) => {
-        if (!client || !isReady) {
-            throw new Error('Cliente de WhatsApp no está listo. Asegúrate de haber escaneado el código QR.');
+    async init() {
+        // Evitar múltiples inicializaciones
+        if (this.client) {
+            console.log('Cliente ya inicializado');
+            return this.client;
         }
 
         try {
-            const response = await client.sendMessage(number + '@c.us', message);
-            return {
-                success: true,
-                message: 'Mensaje enviado correctamente',
-                response: response
-            };
+            this.client = new Client({
+                puppeteer: {
+                    args: [
+                        '--no-sandbox',
+                        '--disable-setuid-sandbox',
+                        '--disable-dev-shm-usage',
+                        '--disable-accelerated-2d-canvas',
+                        '--no-first-run',
+                        '--no-zygote',
+                        '--disable-gpu'
+                    ]
+                }
+            });
+
+            this.setupEventListeners();
+            await this.client.initialize();
+            
+            return this.client;
         } catch (error) {
-            throw new Error(`Error al enviar el mensaje: ${error.message}`);
+            console.error('Error al inicializar cliente:', error);
+            this.client = null;
+            throw error;
         }
-    };
+    }
 
-    const getStatus = () => {
+    setupEventListeners() {
+        this.client.on('qr', (qr) => {
+            console.log('QR Code generado. Escanéalo con WhatsApp:');
+            qrcode.generate(qr, { small: true });
+            this.qrGenerated = true;
+        });
+
+        this.client.on('ready', () => {
+            console.log('Cliente de WhatsApp está listo!');
+            console.log('---------------');
+            this.isReady = true;
+        });
+
+        this.client.on('message', (msg) => {
+            if (msg.body == '!ping') {
+                msg.reply('pong');
+            }
+            msg.reply('Respondo rápido pero no soy yo, luego veo tu mensaje 🥺🙌🏽 .....!');
+        });
+
+        this.client.on('disconnected', (reason) => {
+            console.log('Cliente desconectado:', reason);
+            this.isReady = false;
+            this.qrGenerated = false;
+            this.client = null;
+        });
+    }
+
+    getClient() {
+        if (!this.client) {
+            throw new Error('Cliente no inicializado. Llama a init() primero.');
+        }
+        return this.client;
+    }
+
+    getStatus() {
         return {
-            isReady,
-            qrGenerated,
-            hasClient: !!client
+            isReady: this.isReady,
+            qrGenerated: this.qrGenerated,
+            hasClient: !!this.client
         };
-    };
+    }
 
-    const disconnect = async () => {
-        if (client) {
-            await client.destroy();
-            client = null;
-            isReady = false;
-            qrGenerated = false;
+    async sendMessage(number, message) {
+        if (!this.isReady) {
+            throw new Error('Cliente no está listo');
         }
-    };
+        
+        const chatId = number.includes('@c.us') ? number : `${number}@c.us`;
+        return await this.client.sendMessage(chatId, message);
+    }
 
-    // API pública del módulo
-    return {
-        init,
-        sendMessage,
-        getStatus,
-        disconnect
-    };
-})();
+    async destroy() {
+        if (this.client) {
+            await this.client.destroy();
+            this.client = null;
+            this.isReady = false;
+            this.qrGenerated = false;
+        }
+    }
+}
 
-module.exports = WhatsAppClient;
+// Crear instancia singleton
+const whatsappService = new WhatsAppService();
+
+module.exports = whatsappService;
