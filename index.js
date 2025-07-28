@@ -12,6 +12,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Servir archivos estáticos
 app.use('/public', express.static(path.join(__dirname, 'public')));
+app.use('/node_modules', express.static(path.join(__dirname, 'node_modules')));
 
 // Middleware para logging
 app.use((req, res, next) => {

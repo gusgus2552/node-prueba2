@@ -216,8 +216,18 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="/node_modules/qrcode/build/qrcode.min.js"></script>
     <script>
+        // Verificar si QRCode se cargó, si no, intentar con CDN alternativo
+        if (typeof QRCode === 'undefined') {
+            const fallbackScript = document.createElement('script');
+            fallbackScript.src = 'https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js';
+            fallbackScript.onerror = function() {
+                console.warn('No se pudo cargar la librería QRCode. Usando fallback.');
+            };
+            document.head.appendChild(fallbackScript);
+        }
+
         let statusInterval;
 
         async function initializeClient() {
@@ -299,13 +309,58 @@
             const qrContainer = document.getElementById('qrcode');
             qrContainer.innerHTML = '';
             
-            QRCode.toCanvas(qrData, { width: 250, margin: 2 }, function (error, canvas) {
-                if (error) {
-                    qrContainer.innerHTML = '<p style="color: #dc3545;">Error al generar código QR</p>';
+            // Función para intentar generar QR
+            function tryGenerateQR() {
+                if (typeof QRCode !== 'undefined') {
+                    QRCode.toCanvas(qrData, { 
+                        width: 250, 
+                        margin: 2,
+                        color: {
+                            dark: '#000000',
+                            light: '#FFFFFF'
+                        }
+                    }, function (error, canvas) {
+                        if (error) {
+                            console.error('Error generando QR:', error);
+                            showFallbackQR(qrData);
+                        } else {
+                            qrContainer.appendChild(canvas);
+                        }
+                    });
                 } else {
-                    qrContainer.appendChild(canvas);
+                    // Esperar un poco más para que se cargue la librería
+                    setTimeout(() => {
+                        if (typeof QRCode !== 'undefined') {
+                            tryGenerateQR();
+                        } else {
+                            showFallbackQR(qrData);
+                        }
+                    }, 1000);
                 }
-            });
+            }
+            
+            function showFallbackQR(qrData) {
+                qrContainer.innerHTML = `
+                    <div style="text-align: center;">
+                        <p style="color: #dc3545; margin-bottom: 15px;">⚠️ Error cargando generador de QR</p>
+                        <p style="color: #666; margin-bottom: 15px;">Código QR generado. Usa una aplicación de QR para escanearlo:</p>
+                        <div style="background: white; padding: 10px; border-radius: 8px; word-break: break-all; font-family: monospace; font-size: 12px; margin: 10px 0; border: 1px solid #ddd;">
+                            ${qrData}
+                        </div>
+                        <button onclick="openQRInNewTab('${qrData}')" class="btn" style="font-size: 14px; padding: 10px 20px; margin-top: 10px;">
+                            Abrir QR en nueva pestaña
+                        </button>
+                    </div>
+                `;
+            }
+            
+            tryGenerateQR();
+        }
+
+        function openQRInNewTab(qrData) {
+            // Crear una nueva ventana con el QR usando un servicio online
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrData)}`;
+            window.open(qrUrl, '_blank');
         }
 
         function startStatusCheck() {
