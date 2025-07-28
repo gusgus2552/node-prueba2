@@ -1,9 +1,18 @@
 const express = require('express');
+const path = require('path');
 const WhatsAppClient = require('../modules/whatsappClient');
 const Validator = require('../modules/validator');
 const ResponseHandler = require('../modules/responseHandler');
 
 const router = express.Router();
+
+/**
+ * GET /api/whatsapp/qr
+ * Muestra la página para escanear el código QR
+ */
+router.get('/qr', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'public', 'qr-scanner.html'));
+});
 
 /**
  * POST /api/whatsapp/send

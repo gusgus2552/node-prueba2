@@ -8,6 +8,7 @@ const WhatsAppClient = (() => {
     let client;
     let isReady = false;
     let qrGenerated = false;
+    let currentQR = null;
 
     const init = () => {
         if (client) {
@@ -35,12 +36,14 @@ const WhatsAppClient = (() => {
         client.on('qr', qr => {
             console.log('QR Code generado2. Escanéalo con WhatsApp:');
             qrcode.generate(qr, { small: true });
+            currentQR = qr;
             qrGenerated = true;
         });
 
         client.on('ready', () => {
             console.log('Cliente de WhatsApp está listo!');
             console.log('---------------');
+            currentQR = null; // Limpiar QR cuando esté listo
             isReady = true;
         });
 
@@ -81,7 +84,8 @@ const WhatsAppClient = (() => {
         return {
             isReady,
             qrGenerated,
-            hasClient: !!client
+            hasClient: !!client,
+            qrCode: currentQR
         };
     };
 
@@ -91,6 +95,7 @@ const WhatsAppClient = (() => {
             client = null;
             isReady = false;
             qrGenerated = false;
+            currentQR = null;
         }
     };
 

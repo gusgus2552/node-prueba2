@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const whatsappRoutes = require('./routes/whatsapp');
 const ResponseHandler = require('./modules/responseHandler');
 
@@ -9,6 +10,9 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Servir archivos estáticos
+app.use('/public', express.static(path.join(__dirname, 'public')));
+
 // Middleware para logging
 app.use((req, res, next) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
@@ -18,13 +22,20 @@ app.use((req, res, next) => {
 // Rutas
 app.use('/api/whatsapp', whatsappRoutes);
 
+// Ruta para la página del escáner QR
+app.get('/qr', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'qr-scanner.html'));
+});
+
 // Ruta principal
 app.get('/', (req, res) => {
     ResponseHandler.success(res, {
         name: 'WhatsApp API',
         version: '1.0.0',
         endpoints: {
-            'POST /api/whatsapp/init': 'Inicializar2  cliente de WhatsApp',
+            'GET /qr': 'Página para escanear código QR de WhatsApp (alternativa)',
+            'GET /api/whatsapp/qr': 'Página para escanear código QR de WhatsApp',
+            'POST /api/whatsapp/init': 'Inicializar cliente de WhatsApp',
             'GET /api/whatsapp/status': 'Obtener estado del cliente',
             'POST /api/whatsapp/send': 'Enviar mensaje',
             'POST /api/whatsapp/disconnect': 'Desconectar cliente'
