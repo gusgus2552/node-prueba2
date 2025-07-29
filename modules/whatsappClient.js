@@ -9,11 +9,13 @@ const WhatsAppClient = (() => {
     let isReady = false;
     let qrGenerated = false;
     let currentQR = null;
-
+    let isInitializing = false;
     const init = () => {
-        if (client) {
+        if (client || isInitializing) {
             return client;
         }
+
+        isInitializing = true;
 
         client = new Client({
             authStrategy: new LocalAuth({
@@ -51,7 +53,7 @@ const WhatsAppClient = (() => {
             if (msg.body == '!ping') {
                 msg.reply('pong');
             }
-            msg.reply('¡Hola! Este es un mensaje automático de respuesta. ');
+            msg.reply('Este mensaje es automático, responderé pronto 😁🥺');
         });
 
         client.on('disconnected', (reason) => {
