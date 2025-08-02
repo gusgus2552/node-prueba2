@@ -57,7 +57,16 @@ const WhatsAppClient = (() => {
                     msg.reply('¡Hola! ¿Cómo puedo ayudarte hoy?');
                 }
             } else {
-                msg.reply('Este mensaje es automático, responderé pronto 😁');
+                try {
+                    // 1. Primero reaccionamos al mensaje
+                    await msg.react("✅");
+                    // 2. Luego enviamos el mensaje de bienvenida
+                    await msg.reply(
+                        '👋 ¡Hola! Bienvenido a *Centro Gas*.\n\n🚛 Entrega de gas a domicilio.\n📞 Contáctanos: 917709727\n🌐 Visita: https://centrogasalex.laravel.cloud \n\n💬 *El mejor servicio a tu servicio*'
+                    );
+                } catch (error) {
+                    console.error("Error al procesar mensaje individual:", error.message);
+                }
             }
 
             console.log(`Mensaje recibido de ${msg.from} (${chat.type}): ${msg.body}`);
