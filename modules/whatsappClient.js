@@ -53,7 +53,6 @@ const WhatsAppClient = (() => {
             if (msg.body == '!ping') {
                 msg.reply('pong');
             }
-            msg.reply('Este mensaje es automático');
         });
 
         client.on('disconnected', (reason) => {
