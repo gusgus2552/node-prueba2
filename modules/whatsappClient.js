@@ -49,11 +49,18 @@ const WhatsAppClient = (() => {
             isReady = true;
         });
 
-        client.on('message', msg => {
-            if (msg.body == '!ping') {
-                msg.reply('pong');
+        client.on('message', async msg => {
+            const chat = await msg.getChat();
+            const chatType = chat.isGroup ? 'grupo' : 'individual';
+            if (chatType === 'grupo') {
+                if (msg.body.toLowerCase().includes('hola')) {
+                    msg.reply('¡Hola! ¿Cómo puedo ayudarte hoy?');
+                }
+            } else {
+                msg.reply('Este mensaje es automático, responderé pronto 😁');
             }
-            msg.reply('Este mensaje es automático, responderé pronto 😁🥺');
+
+            console.log(`Mensaje recibido de ${msg.from} (${chat.type}): ${msg.body}`);
         });
 
         client.on('disconnected', (reason) => {
