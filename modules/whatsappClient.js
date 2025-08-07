@@ -12,6 +12,8 @@ const WhatsAppClient = (() => {
     let isInitializing = false;
     let reconnectInterval;
     let keepAliveInterval;
+    let shouldReconnect = true; // Flag para controlar reconexiones automáticas
+    let isManualDisconnection = false; // Flag para identificar desconexiones manuales
     const init = () => {
         if (client || isInitializing) {
             return client;
@@ -64,11 +66,15 @@ const WhatsAppClient = (() => {
             isReady = false;
             isInitializing = false;
             
-            // Intentar reconexión automática después de 30 segundos
-            console.log('Iniciando reconexión automática en 30 segundos...');
-            setTimeout(() => {
-                attemptReconnect();
-            }, 30000);
+            // Solo intentar reconexión si no fue una desconexión manual
+            if (!isManualDisconnection && shouldReconnect) {
+                console.log('Iniciando reconexión automática en 30 segundos...');
+                setTimeout(() => {
+                    attemptReconnect();
+                }, 30000);
+            } else {
+                console.log('Reconexión automática deshabilitada o desconexión manual');
+            }
         });
 
         client.initialize();
@@ -84,6 +90,12 @@ const WhatsAppClient = (() => {
 
     // Función para intentar reconexión automática
     const attemptReconnect = () => {
+        // Verificar si debe seguir reconectando
+        if (!shouldReconnect || isManualDisconnection) {
+            console.log('Reconexión cancelada: deshabilitada o desconexión manual');
+            return;
+        }
+
         if (client && isReady) {
             console.log('Cliente ya está conectado, cancelando reconexión.');
             return;
@@ -91,9 +103,16 @@ const WhatsAppClient = (() => {
 
         console.log('Intentando reconectar...');
         let attempts = 0;
-        const maxAttempts = 2;
+        const maxAttempts = 3; // Reducido a 3 intentos para optimizar recursos
 
         reconnectInterval = setInterval(async () => {
+            // Verificar nuevamente si debe continuar
+            if (!shouldReconnect || isManualDisconnection) {
+                console.log('Reconexión cancelada durante el proceso');
+                clearInterval(reconnectInterval);
+                return;
+            }
+
             attempts++;
             console.log(`Intento de reconexión ${attempts}/${maxAttempts}`);
 
@@ -108,25 +127,25 @@ const WhatsAppClient = (() => {
                 isInitializing = false;
                 init();
 
-                // Si después de 60 segundos no está listo, continuar con el siguiente intento
+                // Reducir tiempo de espera a 45 segundos para optimizar recursos
                 setTimeout(() => {
-                    if (!isReady && attempts < maxAttempts) {
+                    if (!isReady && attempts < maxAttempts && shouldReconnect && !isManualDisconnection) {
                         console.log(`Intento ${attempts} falló, preparando siguiente intento...`);
-                    } else if (attempts >= maxAttempts) {
-                        console.log('Máximo número de intentos de reconexión alcanzado');
+                    } else if (attempts >= maxAttempts || !shouldReconnect || isManualDisconnection) {
+                        console.log('Máximo número de intentos de reconexión alcanzado o reconexión deshabilitada');
                         clearInterval(reconnectInterval);
                     }
-                }, 60000);
+                }, 45000); // Reducido de 60 a 45 segundos
 
             } catch (error) {
                 console.error(`Error en intento de reconexión ${attempts}:`, error);
             }
 
-            if (attempts >= maxAttempts) {
-                console.log('Máximo número de intentos de reconexión alcanzado');
+            if (attempts >= maxAttempts || !shouldReconnect || isManualDisconnection) {
+                console.log('Finalizando intentos de reconexión');
                 clearInterval(reconnectInterval);
             }
-        }, 120000); // Intentar cada 2 minutos
+        }, 90000); // Reducido de 120 a 90 segundos entre intentos
     };
 
     const sendMessage = async (number, message) => {
@@ -151,32 +170,75 @@ const WhatsAppClient = (() => {
             isReady,
             qrGenerated,
             hasClient: !!client,
-            qrCode: currentQR
+            qrCode: currentQR,
+            shouldReconnect,
+            isManualDisconnection
         };
     };
 
     const disconnect = async () => {
-        if (client) {
-            await client.destroy();
-            client = null;
-            isReady = false;
-            qrGenerated = false;
-            currentQR = null;
-            isInitializing = false;
+        console.log('Iniciando desconexión manual del cliente...');
+        
+        // Marcar como desconexión manual para evitar reconexiones
+        isManualDisconnection = true;
+        shouldReconnect = false;
+        
+        // Cancelar cualquier intento de reconexión en progreso
+        if (reconnectInterval) {
+            console.log('Cancelando intentos de reconexión activos...');
+            clearInterval(reconnectInterval);
+            reconnectInterval = null;
         }
         
-        // Limpiar intervalos
+        // Limpiar intervalos de keep alive
         if (keepAliveInterval) {
             clearInterval(keepAliveInterval);
             keepAliveInterval = null;
         }
         
-        if (reconnectInterval) {
-            clearInterval(reconnectInterval);
-            reconnectInterval = null;
+        // Destruir cliente
+        if (client) {
+            try {
+                await client.destroy();
+                console.log('Cliente destruido correctamente');
+            } catch (error) {
+                console.error('Error al destruir cliente:', error);
+            }
+            client = null;
         }
         
-        console.log('Cliente desconectado y limpieza completada');
+        // Resetear estados
+        isReady = false;
+        qrGenerated = false;
+        currentQR = null;
+        isInitializing = false;
+        
+        console.log('Cliente desconectado y limpieza completada - No se intentará reconexión automática');
+    };
+
+    // Función para habilitar/deshabilitar reconexión automática
+    const setAutoReconnect = (enabled) => {
+        shouldReconnect = enabled;
+        if (enabled) {
+            isManualDisconnection = false;
+        }
+        console.log(`Reconexión automática ${enabled ? 'habilitada' : 'deshabilitada'}`);
+    };
+
+    // Función para reconectar manualmente
+    const manualReconnect = async () => {
+        console.log('Iniciando reconexión manual...');
+        isManualDisconnection = false;
+        shouldReconnect = true;
+        
+        // Si ya hay un cliente, desconectarlo primero
+        if (client) {
+            await disconnect();
+            // Esperar un momento antes de reiniciar
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+        
+        return init();
     };
 
     // API pública del módulo
@@ -184,7 +246,9 @@ const WhatsAppClient = (() => {
         init,
         sendMessage,
         getStatus,
-        disconnect
+        disconnect,
+        setAutoReconnect,
+        manualReconnect
     };
 })();
 
