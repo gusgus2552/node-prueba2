@@ -18,7 +18,7 @@ const WhatsAppClient = (() => {
         }
 
         isInitializing = true;
-        setupKeepAlive(); // Configurar keep alive
+        // setupKeepAlive(); // Configurar keep alive
 
         client = new Client({
             authStrategy: new LocalAuth({
@@ -76,11 +76,11 @@ const WhatsAppClient = (() => {
     };
 
     // Función para mantener la actividad (cada 5 minutos)
-    const setupKeepAlive = () => {
-        keepAliveInterval = setInterval(() => {
-            console.log('KeepAlive: WhatsApp Client activo');
-        }, 3 * 60 * 1000); // 3 minutos
-    };
+    // const setupKeepAlive = () => {
+    //     keepAliveInterval = setInterval(() => {
+    //         console.log('KeepAlive: WhatsApp Client activo');
+    //     }, 3 * 60 * 1000); 
+    // };
 
     // Función para intentar reconexión automática
     const attemptReconnect = () => {
@@ -91,7 +91,7 @@ const WhatsAppClient = (() => {
 
         console.log('Intentando reconectar...');
         let attempts = 0;
-        const maxAttempts = 5;
+        const maxAttempts = 2;
 
         reconnectInterval = setInterval(async () => {
             attempts++;
