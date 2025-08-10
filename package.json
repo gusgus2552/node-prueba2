@@ -4,8 +4,8 @@
   "description": "API REST para enviar mensajes de WhatsApp usando el patrón módulo",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
+    "start": "node --expose-gc index.js",
+    "dev": "nodemon --expose-gc index.js"
   },
   "dependencies": {
     "dotenv": "^16.3.1",

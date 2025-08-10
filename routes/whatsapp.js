@@ -38,12 +38,11 @@ router.post('/send', async (req, res) => {
         }
 
         // Enviar el mensaje
-        const result = await WhatsAppClient.sendMessage(number, message);
+        await WhatsAppClient.sendMessage(number, message);
         
         return ResponseHandler.success(res, {
             to: number,
             message: message,
-            messageId: result.response.id._serialized
         }, 'Mensaje enviado correctamente');
 
     } catch (error) {
