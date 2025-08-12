@@ -72,18 +72,7 @@ const WhatsAppClient = (() => {
                     // Limitar la caché del navegador
                     await client.pupPage.setCacheEnabled(false);
                     
-                    // Configurar recolección periódica de basura
-                    if (global.gc) {
-                        if (gcInterval) clearInterval(gcInterval);
-                        gcInterval = setInterval(() => {
-                            try {
-                                global.gc();
-                                console.log('[GC] Recolección programada de basura');
-                            } catch (e) {
-                                console.warn('[GC] Error en recolección programada:', e.message);
-                            }
-                        }, 300000); // Cada 5 minutos
-                    }
+                    
                 } else {
                     console.warn('[WhatsApp] No se encontró la página de Puppeteer');
                 }
@@ -152,18 +141,6 @@ const WhatsAppClient = (() => {
                 client = null;
                 isReady = false;
                 currentQR = null;
-                
-                // Forzar recolección de basura múltiples veces
-                if (global.gc) {
-                    try {
-                        // Forzar varias veces para asegurar limpieza completa
-                        global.gc();
-                        setTimeout(() => global.gc(), 1000);
-                        setTimeout(() => global.gc(), 3000);
-                    } catch (e) {
-                        console.warn('[WhatsApp] No se pudo forzar la recolección de basura');
-                    }
-                }
             } catch (error) {
                 console.error('[WhatsApp] Error durante desconexión:', error.message);
             }
