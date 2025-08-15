@@ -4,15 +4,11 @@
   "description": "API REST para enviar mensajes de WhatsApp usando el patrón módulo",
   "main": "index.js",
   "scripts": {
-    "start": "node --expose-gc index.js",
-    "dev": "nodemon --expose-gc index.js"
+   "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
     "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
-    "express": "^4.18.2",
-    "puppeteer": "^24.15.0",
-    "qrcode": "^1.5.4",
+    "express": "^4.19.2",
     "qrcode-terminal": "^0.12.0",
     "whatsapp-web.js": "^1.31.0"
   },
