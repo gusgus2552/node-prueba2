@@ -4,13 +4,16 @@
   "description": "API REST para enviar mensajes de WhatsApp usando el patrón módulo",
   "main": "index.js",
   "scripts": {
-   "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.864.0",
     "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
     "express": "^4.19.2",
     "qrcode-terminal": "^0.12.0",
-    "whatsapp-web.js": "^1.31.0"
+    "whatsapp-web.js": "^1.31.0",
+    "wwebjs-aws-s3": "^1.0.2"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
