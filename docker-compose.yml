@@ -8,10 +8,6 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - NODE_OPTIONS=--max-old-space-size=256 --expose-gc
-    volumes:
-      # Volumen para persistir la sesión de WhatsApp
-      - whatsapp-session:/app/.wwebjs_auth
-      - whatsapp-cache:/app/.wwebjs_cache
     restart: unless-stopped
     deploy:
       resources:
@@ -24,9 +20,3 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-
-volumes:
-  whatsapp-session:
-    driver: local
-  whatsapp-cache:
-    driver: local

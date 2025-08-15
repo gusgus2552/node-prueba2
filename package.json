@@ -8,6 +8,7 @@
     "dev": "nodemon --expose-gc index.js"
   },
   "dependencies": {
+    "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "puppeteer": "^24.15.0",

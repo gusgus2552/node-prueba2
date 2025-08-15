@@ -1,5 +1,6 @@
 const express = require('express');
-const path = require('path');
+const cors = require('cors');
+const bodyParser = require('body-parser');
 const whatsappRoutes = require('./routes/whatsapp');
 const ResponseHandler = require('./modules/responseHandler');
 
@@ -7,12 +8,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middlewares
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Middlewares
+app.use(cors());
+app.use(bodyParser.json());
 
-// Servir archivos estáticos
-app.use('/public', express.static(path.join(__dirname, 'public')));
-app.use('/node_modules', express.static(path.join(__dirname, 'node_modules')));
 
 // Middleware para logging
 app.use((req, res, next) => {
@@ -22,11 +21,6 @@ app.use((req, res, next) => {
 
 // Rutas
 app.use('/api/whatsapp', whatsappRoutes);
-
-// Ruta para la página del escáner QR
-app.get('/qr', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'qr-scanner.html'));
-});
 
 // Ruta principal
 app.get('/', (req, res) => {
