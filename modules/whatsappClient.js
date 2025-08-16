@@ -1,121 +1,129 @@
-const express = require('express');
-const WhatsAppClient = require('../modules/whatsappClient');
-const Validator = require('../modules/validator');
-const ResponseHandler = require('../modules/responseHandler');
 
-const router = express.Router();
+require('dotenv').config();
+const { Client, RemoteAuth } = require('whatsapp-web.js');
+const { AwsS3Store } = require('wwebjs-aws-s3');
+const {
+    S3Client,
+    PutObjectCommand,
+    HeadObjectCommand,
+    GetObjectCommand,
+    DeleteObjectCommand
+} = require('@aws-sdk/client-s3');
+const qrcode = require('qrcode-terminal');
 
-/**
- * POST /api/whatsapp/send
- * Envía un mensaje de WhatsApp
- */
-router.post('/send', async (req, res) => {
-    try {
-        // Validar los datos de entrada
-        const validation = Validator.validateSendMessageRequest(req.body);
-        if (!validation.isValid) {
-            return ResponseHandler.validationError(res, validation.error);
+
+const WhatsAppClient = (() => {
+    let client;
+    let isReady = false;
+    let currentQR = null;
+    let isManualDisconnect = false;
+    let lastDisconnectReason = null;
+
+    // 1. Conexión a S3
+    const s3 = new S3Client({
+        region: process.env.AWS_REGION,
+        credentials: {
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
         }
+    });
 
-        const { number, message } = validation.data;
+    // 2. Comandos que el AwsS3Store necesita
+    const putObjectCommand = PutObjectCommand;
+    const headObjectCommand = HeadObjectCommand;
+    const getObjectCommand = GetObjectCommand;
+    const deleteObjectCommand = DeleteObjectCommand;
 
-        // Verificar el estado del cliente
-        const status = WhatsAppClient.getStatus();
-        if (!status.isReady) {
-            if (!status.hasClient) {
-                return ResponseHandler.serviceUnavailable(res, 'Cliente de WhatsApp no inicializado. Use el endpoint /init primero.');
+    // 3. Configuración del store
+    const store = new AwsS3Store({
+        bucketName: process.env.AWS_BUCKET_NAME,
+        remoteDataPath: process.env.AWS_BUCKET_PATH || '',
+        s3Client: s3,
+        putObjectCommand,
+        headObjectCommand,
+        getObjectCommand,
+        deleteObjectCommand
+    });
+
+    const init = async () => {
+        if (client || isReady) return client;
+
+        client = new Client({
+            authStrategy: new RemoteAuth({
+                clientId: process.env.SESSION_NAME,
+                // dataPath: './.wwebjs_auth',
+                backupSyncIntervalMs: 600000,
+                store: store
+            }),
+            puppeteer: {
+                headless: true,
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage'
+                ]
             }
-            return ResponseHandler.serviceUnavailable(res, 'Cliente de WhatsApp no está listo. Asegúrese de haber escaneado el código QR.');
+        });
+
+        client.on('qr', (qr) => {
+            currentQR = qr;
+            qrcode.generate(qr, { small: true });
+            console.log('QR RECEIVED', qr);
+        });
+
+        client.on('ready', async () => {
+            console.log('✅ Cliente listo (pero la sesión aún puede no estar en S3)');
+            isReady = true;
+            currentQR = null;
+        });
+
+        client.on('remote_session_saved', () => {
+            console.log('💾 Sesión guardada correctamente en S3');
+        });
+        await client.initialize();
+        return client;
+    };
+
+    // Forzar reconexión: destruye y reinicia el cliente
+    const forceReconnect = async () => {
+       if (client && isReady) {
+        console.log("Cliente ya listo, no se destruye.");
+        return getStatus();
+    }
+    return init(); // reinicia solo si no está listo
+    };
+
+    const wait = ms => new Promise(res => setTimeout(res, ms));
+    const sendMessage = async (number, message, retries = 3) => {
+        for (let i = 0; i < retries; i++) {
+            if (isReady) {
+                return client.sendMessage(`${number}@c.us`, message);
+            }
+            console.log(`[WhatsApp] Cliente no listo, reintentando... (${i+1}/${retries})`);
+            await wait(2000);
         }
+        throw new Error('[WhatsApp] Cliente no inicializado después de varios intentos');
+    };
 
-        // Enviar el mensaje
-        await WhatsAppClient.sendMessage(number, message);
-        
-        return ResponseHandler.success(res, {
-            to: number,
-            message: message,
-        }, 'Mensaje enviado correctamente');
-
-    } catch (error) {
-        console.error('Error al enviar mensaje:', error);
-        return ResponseHandler.error(res, error.message);
-    }
-});
-
-/**
- * GET /api/whatsapp/status
- * Obtiene el estado del cliente de WhatsApp
- */
-router.get('/status', (req, res) => {
-    try {
-        const status = WhatsAppClient.getStatus();
-        return ResponseHandler.success(res, status, 'Estado en del clienteee obtenido correctamente');
-    } catch (error) {
-        console.error('Error al obtener estado:', error);
-        return ResponseHandler.error(res, error.message);
-    }
-});
-
-/**
- * POST /api/whatsapp/init
- * Inicializa el cliente de WhatsApp
- */
-router.post('/init', (req, res) => {
-    try {
-        const status = WhatsAppClient.getStatus();
-        if (status.hasClient) {
-            return ResponseHandler.success(res, status, 'Cliente ya inicializado');
+    const disconnect = async () => {
+        isManualDisconnect = true;
+        if (client) {
+            await client.destroy();
+            client = null;
         }
+        isReady = false;
+        currentQR = null;
+    };
 
-        WhatsAppClient.init();
-        return ResponseHandler.success(res, {
-            message: 'Cliente inicializado. Escanee el código QR que aparece en la consola.'
-        }, 'Cliente inicializado correctamente');
-    } catch (error) {
-        console.error('Error al inicializar cliente:', error);
-        return ResponseHandler.error(res, error.message);
-    }
-});
+    // Mejorar getStatus para exponer más información
+    const getStatus = () => ({
+        isReady,
+        qr: currentQR,
+        hasClient: !!client,
+        lastDisconnectReason
+    });
 
-/**
- * POST /api/whatsapp/disconnect
- * Desconecta el cliente de WhatsApp
- */
-router.post('/disconnect', async (req, res) => {
-    try {
-        await WhatsAppClient.disconnect();
-        return ResponseHandler.success(res, null, 'Cliente desconectado correctamente');
-    } catch (error) {
-        console.error('Error al desconectar cliente:', error);
-        return ResponseHandler.error(res, error.message);
-    }
-});
+    return { init, sendMessage, disconnect, getStatus, forceReconnect };
+})();
 
-
-/**
- * POST /api/whatsapp/reconnect
- * Fuerza la reconexión del cliente de WhatsApp
- */
-router.post('/reconnect', async (req, res) => {
-    try {
-        const status = WhatsAppClient.getStatus();
-
-        if (!status.hasClient) {
-            // Si nunca se inicializó, volvemos a init
-            WhatsAppClient.init();
-            return ResponseHandler.success(res, null, 'Cliente no existía, inicializando...');
-        }
-
-        await WhatsAppClient.forceReconnect();
-        if (!status.isReady) {
-            return ResponseHandler.success(res, status, 'Cliente ya estaba conectado y listo');
-        }
-        return ResponseHandler.success(res, null, 'Cliente esta volviendo a iniciar...');
-
-    } catch (error) {
-        console.error('Error al reconectar cliente:', error);
-        return ResponseHandler.error(res, error.message);
-    }
-});
-
-module.exports = router;
+module.exports = WhatsAppClient;
