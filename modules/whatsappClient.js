@@ -17,6 +17,7 @@ const WhatsAppClient = (() => {
     let isReady = false;
     let currentQR = null;
     let isManualDisconnect = false;
+    let lastDisconnectReason = null;
 
     // 1. Conexión a S3
     const s3 = new S3Client({
@@ -50,9 +51,9 @@ const WhatsAppClient = (() => {
         client = new Client({
             authStrategy: new RemoteAuth({
                 clientId: process.env.SESSION_NAME,
-                dataPath: './.wwebjs_auth',
-                store: store,
-                backupSyncIntervalMs: 600000 // 10 minutos
+                // dataPath: './.wwebjs_auth',
+                backupSyncIntervalMs: 600000,
+                store: store
             }),
             puppeteer: {
                 headless: true,
@@ -80,29 +81,69 @@ const WhatsAppClient = (() => {
             console.log('💾 Sesión guardada correctamente en S3');
         });
 
-        client.on('disconnected', (reason) => {
+        client.on('disconnected', async (reason) => {
             console.log('❌ Cliente desconectado:', reason);
             isReady = false;
+            lastDisconnectReason = reason;
+
+            if (!isManualDisconnect) {
+                console.log('🔄 Intentando reconectar automáticamente...');
+                await forceReconnect();
+            }
         });
+
 
         await client.initialize();
         return client;
     };
 
-    const sendMessage = async (number, message) => {
-        if (!isReady) throw new Error('[WhatsApp] Cliente no inicializado');
-        return client.sendMessage(`${number}@c.us`, message);
+    // Forzar reconexión: destruye y reinicia el cliente
+    const forceReconnect = async () => {
+        if (client) {
+            try {
+                await client.destroy();
+            } catch (e) {
+                console.error('Error al destruir cliente en forceReconnect:', e);
+            }
+            client = null;
+            isReady = false;
+            currentQR = null;
+        }
+        lastDisconnectReason = null;
+        return await init();
+    };
+
+    const wait = ms => new Promise(res => setTimeout(res, ms));
+    const sendMessage = async (number, message, retries = 3) => {
+        for (let i = 0; i < retries; i++) {
+            if (isReady) {
+                return client.sendMessage(`${number}@c.us`, message);
+            }
+            console.log(`[WhatsApp] Cliente no listo, reintentando... (${i+1}/${retries})`);
+            await wait(2000);
+        }
+        throw new Error('[WhatsApp] Cliente no inicializado después de varios intentos');
     };
 
     const disconnect = async () => {
         isManualDisconnect = true;
-        await client.destroy();
-        client = null;
+        if (client) {
+            await client.destroy();
+            client = null;
+        }
         isReady = false;
         currentQR = null;
     };
 
-    return { init, sendMessage, disconnect, getStatus: () => ({ isReady, qr: currentQR }) };
+    // Mejorar getStatus para exponer más información
+    const getStatus = () => ({
+        isReady,
+        qr: currentQR,
+        hasClient: !!client,
+        lastDisconnectReason
+    });
+
+    return { init, sendMessage, disconnect, getStatus, forceReconnect };
 })();
 
 module.exports = WhatsAppClient;

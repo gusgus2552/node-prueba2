@@ -1,18 +1,9 @@
 const express = require('express');
-const path = require('path');
 const WhatsAppClient = require('../modules/whatsappClient');
 const Validator = require('../modules/validator');
 const ResponseHandler = require('../modules/responseHandler');
 
 const router = express.Router();
-
-/**
- * GET /api/whatsapp/qr
- * Muestra la página para escanear el código QR
- */
-router.get('/qr', (req, res) => {
-    res.sendFile(path.join(__dirname, '..', 'public', 'qr-scanner.html'));
-});
 
 /**
  * POST /api/whatsapp/send
@@ -96,6 +87,33 @@ router.post('/disconnect', async (req, res) => {
         return ResponseHandler.success(res, null, 'Cliente desconectado correctamente');
     } catch (error) {
         console.error('Error al desconectar cliente:', error);
+        return ResponseHandler.error(res, error.message);
+    }
+});
+
+
+/**
+ * POST /api/whatsapp/reconnect
+ * Fuerza la reconexión del cliente de WhatsApp
+ */
+router.post('/reconnect', async (req, res) => {
+    try {
+        const status = WhatsAppClient.getStatus();
+
+        if (!status.hasClient) {
+            // Si nunca se inicializó, volvemos a init
+            WhatsAppClient.init();
+            return ResponseHandler.success(res, null, 'Cliente no existía, inicializando...');
+        }
+
+        if (!status.isReady) {
+            await WhatsAppClient.forceReconnect();
+            return ResponseHandler.success(res, null, 'Cliente reconectando...');
+        }
+
+        return ResponseHandler.success(res, status, 'Cliente ya estaba conectado y listo');
+    } catch (error) {
+        console.error('Error al reconectar cliente:', error);
         return ResponseHandler.error(res, error.message);
     }
 });
