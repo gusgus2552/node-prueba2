@@ -4,16 +4,8 @@ services:
     container_name: whatsapp-api
     ports:
       - "3000:3000"
-    environment:
-      - NODE_ENV=production
-      - PORT=3000
-      - NODE_OPTIONS=--max-old-space-size=256 --expose-gc
-      - AWS_REGION=us-east-2
-      - AWS_ACCESS_KEY_ID=AKIA2W6HW6J2WCA3VM6H
-      - AWS_SECRET_ACCESS_KEY=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
-      - AWS_BUCKET_NAME=whatsapp-sessions-junior
-      - AWS_BUCKET_PATH=sessions/
-      - SESSION_NAME=centro_gas_bot
+    env_file:
+      - .env
     restart: unless-stopped
     deploy:
       resources:
