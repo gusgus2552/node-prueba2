@@ -106,12 +106,12 @@ router.post('/reconnect', async (req, res) => {
             return ResponseHandler.success(res, null, 'Cliente no existía, inicializando...');
         }
 
+        await WhatsAppClient.forceReconnect();
         if (!status.isReady) {
-            await WhatsAppClient.forceReconnect();
-            return ResponseHandler.success(res, null, 'Cliente reconectando...');
+            return ResponseHandler.success(res, status, 'Cliente ya estaba conectado y listo');
         }
+        return ResponseHandler.success(res, null, 'Cliente reconectando...');
 
-        return ResponseHandler.success(res, status, 'Cliente ya estaba conectado y listo');
     } catch (error) {
         console.error('Error al reconectar cliente:', error);
         return ResponseHandler.error(res, error.message);
