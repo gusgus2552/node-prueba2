@@ -51,8 +51,8 @@ const WhatsAppClient = (() => {
             authStrategy: new RemoteAuth({
                 clientId: process.env.SESSION_NAME,
                 dataPath: './.wwebjs_auth',
-                store: store
-                // backupSyncIntervalMs eliminado para reducir costos: solo guarda cuando la sesión cambia
+                store: store,
+                backupSyncIntervalMs: 600000 // 10 minutos
             }),
             puppeteer: {
                 headless: true,
